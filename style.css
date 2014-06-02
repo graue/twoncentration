@@ -1,0 +1,17 @@
+.card {
+  display: inline-block;
+  width: 120px;
+  height: 120px;
+  overflow: hidden;
+  border: 1px solid black;
+  margin: 0.5em;
+  padding: 0.25em;
+}
+
+.card.flipped {
+  background-color: #303343;
+}
+
+* {
+  box-sizing: border-box;
+}
