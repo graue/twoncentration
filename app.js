@@ -16,8 +16,8 @@ function generateTestCards() {
 }
 
 // Shuffle the cards, returning an array of:
-// {content: '...', id: '...', isFront: true/falsy},
-// where id is the id of the pair (both cards in a pair have same id).
+// {content: '...', pairId: '...', isFront: true/falsy},
+// where both cards in a pair have same pairId.
 function shuffledCards(cards, numPairs) {
   // We may have more cards than we need, so only select some.
   var chosenCards = _.sample(_.pairs(cards), numPairs);
@@ -25,8 +25,8 @@ function shuffledCards(cards, numPairs) {
   return (_.chain(chosenCards)
     .map(function(pair) {
       return [
-        {content: pair[1][0], id: pair[0], isFront: true},
-        {content: pair[1][1], id: pair[0]}
+        {content: pair[1][0], pairId: pair[0], isFront: true},
+        {content: pair[1][1], pairId: pair[0]}
       ];
     })
     .flatten(true)
@@ -35,27 +35,85 @@ function shuffledCards(cards, numPairs) {
 }
 
 var NUM_PAIRS = 12;
+var UNFLIP_CARDS_DELAY = 1200;
 
 var Card = React.createClass({
   render: function() {
-    return React.DOM.div({className: 'card'},
-      React.DOM.p(null, 'Contents: ' + this.props.content));
+    if (this.props.collected) {
+      return React.DOM.div({className: 'card collected'});
+    }
+
+    var classes = 'card';
+    if (this.props.isFlipped) classes += ' flipped';
+
+    return React.DOM.div(
+      {
+        className: 'card',
+        onClick: !this.props.isFlipped ? this.handleClick : null
+      },
+      this.props.isFlipped
+        ? React.DOM.p(null, 'Content: ' + this.props.content)
+        : ''
+    );
+  },
+
+  handleClick: function() {
+    this.props.onFlip(this.props.key);
   }
 });
 
 var App = React.createClass({
   getInitialState: function() {
     return {
-      cards: shuffledCards(CARDS, NUM_PAIRS)
+      cards: shuffledCards(CARDS, NUM_PAIRS),
+      flipped: []
     };
   },
 
   render: function() {
+    var that = this;
+
     return React.DOM.div({className: 'app'},
-      this.state.cards.map(function(cardInfo) {
-        var key = cardInfo.id + (cardInfo.isFront ? 'F' : 'B');
-        return Card(_.extend({key: key}, cardInfo));
+      React.DOM.p(null, 'Flipped: ' + JSON.stringify(this.state.flipped)),
+      this.state.cards.map(function(cardInfo, index) {
+        if (!cardInfo) {
+          return Card({key: index, collected: true});
+        }
+
+        var isFlipped = _.contains(that.state.flipped, index);
+
+        return Card({
+          key: index,
+          pairId: cardInfo.pairId,
+          content: cardInfo.content,
+          isFlipped: isFlipped,
+          onFlip: that.handleFlip
+        });
       }));
+  },
+
+  handleFlip: function(index) {
+    if (this.state.flipped.length >= 2) return;
+
+    var flipped = this.state.flipped.concat(index);
+    this.setState({flipped: flipped});
+
+    if (flipped.length === 2) {
+      setTimeout(this.unflipCards, UNFLIP_CARDS_DELAY);
+    }
+  },
+
+  unflipCards: function() {
+    var that = this;
+
+    // Check if we have a match and collect the cards
+    var pairIds = this.state.flipped.map(function(index) {
+      return that.state.cards[index].pairId;
+    });
+    if (pairIds[0] === pairIds[1]) {
+      console.log('you got a match!');
+    }
+    this.setState({flipped: []});
   }
 });
 
