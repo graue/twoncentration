@@ -48,11 +48,11 @@ var Card = React.createClass({
 
     return React.DOM.div(
       {
-        className: 'card',
+        className: classes,
         onClick: !this.props.isFlipped ? this.handleClick : null
       },
       this.props.isFlipped
-        ? React.DOM.p(null, 'Content: ' + this.props.content)
+        ? React.DOM.p(null, this.props.content)
         : ''
     );
   },
@@ -73,7 +73,13 @@ var App = React.createClass({
   render: function() {
     var that = this;
 
-    return React.DOM.div({className: 'app'},
+    // All cards collected?
+    if (_.compact(this.state.cards).length === 0) {
+      return React.DOM.div({id: 'app'},
+        React.DOM.h1({id: 'win-message'}, 'You win!'));
+    }
+
+    return React.DOM.div({id: 'app'},
       React.DOM.p(null, 'Flipped: ' + JSON.stringify(this.state.flipped)),
       this.state.cards.map(function(cardInfo, index) {
         if (!cardInfo) {
@@ -111,7 +117,12 @@ var App = React.createClass({
       return that.state.cards[index].pairId;
     });
     if (pairIds[0] === pairIds[1]) {
-      console.log('you got a match!');
+      // We collect cards by setting the element in this.state.cards to null
+      var cards = _.clone(this.state.cards);
+      this.state.flipped.forEach(function(index) {
+        cards[index] = null;
+      });
+      this.setState({cards: cards});
     }
     this.setState({flipped: []});
   }

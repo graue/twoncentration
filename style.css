@@ -1,15 +1,31 @@
 .card {
   display: inline-block;
-  width: 120px;
-  height: 120px;
+  width: 8em;
+  height: 8em;
   overflow: hidden;
   border: 1px solid black;
   margin: 0.5em;
   padding: 0.25em;
+  background-color: #303343;
+}
+
+#app {
+  /* Make it just wide enough for width of 6 cards */
+  max-width: 54em;
 }
 
 .card.flipped {
-  background-color: #303343;
+  background-color: #c0c0c0;
+}
+
+.card.collected {
+  background-color: transparent;
+  border: 0;
+}
+
+.card p {
+  font-size: 1.5em;
+  text-align: center;
 }
 
 * {
