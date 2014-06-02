@@ -1,7 +1,5 @@
 //(function() {
 
-var CARDS = generateTestCards();
-
 // Return generated test cards that have A, B, C... on one side and 1, 2, 3...
 // on the other. Unshuffled cards are stored as a map from IDs (can be any
 // string; in this case, the letter) to [first, second] pairs – where 'first'
@@ -13,6 +11,13 @@ function generateTestCards() {
     cards[letter] = [letter, (i+1) + ''];
   }
   return cards;
+}
+
+// Mock async card fetcher.
+function fetchCards(callback) {
+  setTimeout(function() {
+    callback(null, generateTestCards());
+  }, 100);
 }
 
 // Shuffle the cards, returning an array of:
@@ -65,16 +70,37 @@ var Card = React.createClass({
 var App = React.createClass({
   getInitialState: function() {
     return {
-      cards: shuffledCards(CARDS, NUM_PAIRS),
+      cards: undefined,
       flipped: []
     };
+  },
+
+  componentDidMount: function() {
+    fetchCards(this.receiveFetchedCards);
+  },
+
+  receiveFetchedCards: function(err, data) {
+    if (!this.isMounted()) return;
+    if (err) throw err; // FIXME: show error
+    this.setState({cards: shuffledCards(data, NUM_PAIRS)});
+  },
+
+  allCardsCollected: function() {
+    return _.compact(this.state.cards).length === 0;
+  },
+
+  hasLoaded: function() {
+    return !!this.state.cards;
   },
 
   render: function() {
     var that = this;
 
-    // All cards collected?
-    if (_.compact(this.state.cards).length === 0) {
+    if (!this.hasLoaded()) {
+      return React.DOM.div({id: 'app'}, 'Loading');
+    }
+
+    if (this.allCardsCollected()) {
       return React.DOM.div({id: 'app'},
         React.DOM.h1({id: 'win-message'}, 'You win!'));
     }
@@ -115,6 +141,7 @@ var App = React.createClass({
     var pairIds = this.state.flipped.map(function(index) {
       return that.state.cards[index].pairId;
     });
+
     if (pairIds[0] === pairIds[1]) {
       // We collect cards by setting the element in this.state.cards to null
       var cards = _.clone(this.state.cards);
@@ -123,6 +150,7 @@ var App = React.createClass({
       });
       this.setState({cards: cards});
     }
+
     this.setState({flipped: []});
   }
 });
