@@ -80,7 +80,6 @@ var App = React.createClass({
     }
 
     return React.DOM.div({id: 'app'},
-      React.DOM.p(null, 'Flipped: ' + JSON.stringify(this.state.flipped)),
       this.state.cards.map(function(cardInfo, index) {
         if (!cardInfo) {
           return Card({key: index, collected: true});
