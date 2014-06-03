@@ -117,10 +117,6 @@ app.get('/signin', doTwitterAuth);
 app.get('/signout', doSignout);
 app.get('/oauth-callback', doOAuthCallback);
 app.get('/get-friends', getFriends);
-app.get('/session', function(req, res) {
-  res.end('The following things are in the session:\n'
-    + JSON.stringify(req.session));
-});
 app.get('/', function(req, res) {
   var sess = req.session;
   if (sess.accessToken) {
