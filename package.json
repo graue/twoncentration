@@ -1,0 +1,8 @@
+{
+  "name": "twoncentration",
+  "version": "0.0.1",
+  "dependencies": {
+    "express": "^4.4.1",
+    "node-twitter-api": "^1.2.2"
+  }
+}
