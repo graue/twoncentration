@@ -1,0 +1,17 @@
+doctype html
+html(lang='en')
+  head
+    title Concentration
+    link(rel='stylesheet',href='style.css')
+    meta(charset='utf-8')
+
+  body
+    p
+      | Logged in as 
+      a(href='https://twitter.com/#{screenName}')  @#{screenName}
+      | . 
+      a(href='/signout') Log out
+    div#app-container
+    script(src='vendor/react.js')
+    script(src='vendor/underscore.js')
+    script(src='app.js')
