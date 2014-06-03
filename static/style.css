@@ -23,9 +23,17 @@
   border: 0;
 }
 
-.card p {
-  font-size: 1.5em;
+.card {
   text-align: center;
+}
+
+.card p {
+  margin-top: 2em;
+  font-size: 0.75em;
+}
+
+.card img {
+  margin-top: 1em;
 }
 
 * {

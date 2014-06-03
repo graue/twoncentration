@@ -18,7 +18,8 @@ var twitter = new twitterAPI({
   callback: config.publicUrl + 'oauth-callback'
 });
 
-var requestTokens = {}; // Map from tokens to token secrets
+var requestTokens = {}; // Map tokens to token secrets
+var friendsCache = {}; // Map screen names to previously fetched friends list
 
 function serveErrorPage(res, msg, code) {
   res.writeHead(code || 500, {'content-type': 'text/plain'});
@@ -67,8 +68,55 @@ function doOAuthCallback(req, res) {
     gotAccessToken);
 }
 
+// Fetch and return friends info from Twitter.
+function getFriends(req, res) {
+  if (!req.session.accessToken) {
+    return serveErrorPage(res, "You aren't logged in", 401);
+  }
+
+  var gotFriendsList = function(error, data, response) {
+    if (error) {
+      return serveErrorPage(res, 'Fetching friends list failed:\n ' + error);
+    }
+    friendsCache[req.session.screenName] = data;
+    var output = JSON.stringify(data.users.map(function(userInfo) {
+      return {
+        name: userInfo.name,
+        screenName: userInfo.screen_name,
+        imageUrl: userInfo.profile_image_url.replace(/_normal\./, '_bigger.')
+      };
+    }));
+    res.writeHead(200, {'content-type': 'application/json'});
+    res.end(output);
+  };
+
+  if ({}.hasOwnProperty.call(friendsCache, req.session.screenName)) {
+    gotFriendsList(null, friendsCache[req.session.screenName], '');
+    return;
+  }
+
+  twitter.friends('list',
+    {
+      screen_name: req.session.screenName,
+      count: 200,
+      include_user_entities: true
+    },
+    req.session.accessToken,
+    req.session.accessSecret,
+    gotFriendsList);
+}
+
+function doSignout(req, res) {
+  delete req.session.accessToken;
+  delete req.session.accessSecret;
+  delete req.session.screenName;
+  res.redirect(config.publicUrl);
+}
+
 app.get('/signin', doTwitterAuth);
+app.get('/signout', doSignout);
 app.get('/oauth-callback', doOAuthCallback);
+app.get('/get-friends', getFriends);
 app.get('/session', function(req, res) {
   res.end('The following things are in the session:\n'
     + JSON.stringify(req.session));

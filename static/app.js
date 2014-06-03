@@ -1,37 +1,44 @@
 //(function() {
 
-// Return generated test cards that have A, B, C... on one side and 1, 2, 3...
-// on the other. Unshuffled cards are stored as a map from IDs (can be any
-// string; in this case, the letter) to [first, second] pairs – where 'first'
-// and 'second' are the (string, currently) contents of each card in the pair.
-function generateTestCards() {
-  var cards = {};
-  for (var i = 0; i < 26; i++) {
-    var letter = String.fromCharCode(65 + i); // A, B, C...
-    cards[letter] = [letter, (i+1) + ''];
-  }
-  return cards;
+function fetchFriends(callback) {
+  var req = new XMLHttpRequest();
+
+  req.onload = function() {
+    if (this.status !== 200) {
+      callback('Request failed with code ' + this.status, null);
+    }
+
+    callback(null, JSON.parse(this.response));
+  };
+  req.onerror = function() {
+    callback('Failed to send request', null);
+  };
+
+  req.open('GET', window.location + 'get-friends', true);
+  req.send();
 }
 
-// Mock async card fetcher.
-function fetchCards(callback) {
-  setTimeout(function() {
-    callback(null, generateTestCards());
-  }, 100);
-}
-
-// Shuffle the cards, returning an array of:
-// {content: '...', pairId: '...', isFront: true/falsy},
+// Create and shuffle cards, returning an array of
+// {content: {...}, pairId: '...', isFront: true/falsy},
 // where both cards in a pair have same pairId.
-function shuffledCards(cards, numPairs) {
+// content contains either 'imageUrl' or both 'name' and 'screenName'
+// keys.
+function makeShuffledCards(users, numPairs) {
   // We may have more cards than we need, so only select some.
-  var chosenCards = _.sample(_.pairs(cards), numPairs);
+  var chosenUsers = _.sample(users, numPairs);
 
-  return (_.chain(chosenCards)
-    .map(function(pair) {
+  return (_.chain(chosenUsers)
+    .map(function(user) {
       return [
-        {content: pair[1][0], pairId: pair[0], isFront: true},
-        {content: pair[1][1], pairId: pair[0]}
+        {
+          content: _.pick(user, 'imageUrl'),
+          pairId: user.screenName,
+          isFront: true
+        },
+        {
+          content: _.pick(user, 'name', 'screenName'),
+          pairId: user.screenName
+        }
       ];
     })
     .flatten(true)
@@ -49,16 +56,35 @@ var Card = React.createClass({
     }
 
     var classes = 'card';
-    if (this.props.isFlipped) classes += ' flipped';
+    var cardContent = '';
+    var preloadImage = '';
+
+    if (this.props.isFlipped) {
+      classes += ' flipped';
+      if (this.props.content.imageUrl) {
+        cardContent = React.DOM.img({src: this.props.content.imageUrl});
+      } else {
+        cardContent = React.DOM.p(null,
+          React.DOM.strong(null, this.props.content.name),
+          React.DOM.br(),
+          React.DOM.br(),
+          '@' + this.props.content.screenName);
+      }
+    }
+
+    if (this.props.content.imageUrl) {
+      var style = {background: 'url(' + this.props.content.imageUrl +
+          ') no-repeat -9999px -9999px'};
+      preloadImage = React.DOM.div({style: style});
+    }
 
     return React.DOM.div(
       {
         className: classes,
         onClick: !this.props.isFlipped ? this.handleClick : null
       },
-      this.props.isFlipped
-        ? React.DOM.p(null, this.props.content)
-        : ''
+      cardContent,
+      preloadImage
     );
   },
 
@@ -71,18 +97,30 @@ var App = React.createClass({
   getInitialState: function() {
     return {
       cards: undefined,
-      flipped: []
+      flipped: [],
+      flips: 0
     };
   },
 
   componentDidMount: function() {
-    fetchCards(this.receiveFetchedCards);
+    fetchFriends(this.receiveFetchedFriends);
   },
 
-  receiveFetchedCards: function(err, data) {
+  receiveFetchedFriends: function(err, data) {
     if (!this.isMounted()) return;
     if (err) throw err; // FIXME: show error
-    this.setState({cards: shuffledCards(data, NUM_PAIRS)});
+    this.setState({
+      userData: data,
+      cards: makeShuffledCards(data, NUM_PAIRS)
+    });
+  },
+
+  restartGame: function() {
+    this.setState({
+      cards: makeShuffledCards(this.state.userData, NUM_PAIRS),
+      flipped: [],
+      flips: 0
+    });
   },
 
   allCardsCollected: function() {
@@ -102,7 +140,9 @@ var App = React.createClass({
 
     if (this.allCardsCollected()) {
       return React.DOM.div({id: 'app'},
-        React.DOM.h1({id: 'win-message'}, 'You win!'));
+        React.DOM.h1({id: 'win-message'}, 'You win!'),
+        React.DOM.h2(null, 'with ' + this.state.flips + ' card flips'),
+        React.DOM.button({onClick: this.restartGame}, 'Play again'));
     }
 
     return React.DOM.div({id: 'app'},
@@ -120,14 +160,15 @@ var App = React.createClass({
           isFlipped: isFlipped,
           onFlip: that.handleFlip
         });
-      }));
+      }),
+      React.DOM.p(null, this.state.flips + ' cards flipped'));
   },
 
   handleFlip: function(index) {
     if (this.state.flipped.length >= 2) return;
 
     var flipped = this.state.flipped.concat(index);
-    this.setState({flipped: flipped});
+    this.setState({flipped: flipped, flips: this.state.flips + 1});
 
     if (flipped.length === 2) {
       setTimeout(this.unflipCards, UNFLIP_CARDS_DELAY);
