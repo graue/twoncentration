@@ -21,6 +21,9 @@ var twitter = new twitterAPI({
 var requestTokens = {}; // Map tokens to token secrets
 var friendsCache = {}; // Map screen names to previously fetched friends list
 
+var HOUR = 60*60*1000;
+var MAX_CACHE_AGE = 5 * HOUR;
+
 function serveErrorPage(res, msg, code) {
   res.writeHead(code || 500, {'content-type': 'text/plain'});
   res.end('Error:\n' + msg);
@@ -74,11 +77,14 @@ function getFriends(req, res) {
     return serveErrorPage(res, "You aren't logged in", 401);
   }
 
+  var screenName = req.session.screenName;
+
   var gotFriendsList = function(error, data, response) {
     if (error) {
       return serveErrorPage(res, 'Fetching friends list failed:\n ' + error);
     }
-    friendsCache[req.session.screenName] = data;
+    data.expiresAt = Date.now() + MAX_CACHE_AGE;
+    friendsCache[screenName] = data;
     var output = JSON.stringify(data.users.map(function(userInfo) {
       return {
         name: userInfo.name,
@@ -90,14 +96,18 @@ function getFriends(req, res) {
     res.end(output);
   };
 
-  if ({}.hasOwnProperty.call(friendsCache, req.session.screenName)) {
-    gotFriendsList(null, friendsCache[req.session.screenName], '');
-    return;
+  if ({}.hasOwnProperty.call(friendsCache, screenName)) {
+    if (friendsCache[screenName].expiresAt <= Date.now()) {
+      delete friendsCache[screenName];
+    } else {
+      gotFriendsList(null, friendsCache[screenName], '');
+      return;
+    }
   }
 
   twitter.friends('list',
     {
-      screen_name: req.session.screenName,
+      screen_name: screenName,
       count: 200,
       include_user_entities: true
     },
