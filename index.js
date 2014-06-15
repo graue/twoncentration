@@ -32,8 +32,8 @@ function doTwitterAuth(req, res) {
       return serveErrorPage(res, "Couldn't get OAuth request token:\n" + err);
     }
     requestTokens[reqToken] = reqTokenSecret;
-    res.redirect('https://twitter.com/oauth/authenticate?oauth_token='
-      + reqToken);
+    res.redirect('https://twitter.com/oauth/authenticate?oauth_token=' +
+      reqToken);
   });
 }
 
@@ -41,8 +41,8 @@ function doOAuthCallback(req, res) {
   var reqToken = req.query.oauth_token;
   var reqTokenSecret = requestTokens[reqToken];
   if (!reqTokenSecret) {
-    return serveErrorPage(res, 'Request token secret not found.\n'
-      + 'Try signing in again. Sorry about that.');
+    return serveErrorPage(res, 'Request token secret not found.\n' +
+      'Try signing in again. Sorry about that.');
   }
 
   var gotAccessToken = function(err, accessToken, accessTokenSecret, results) {
@@ -60,7 +60,7 @@ function doOAuthCallback(req, res) {
     if (err) {
       return serveErrorPage(res, "Couldn't verify credentials:\n" + err);
     }
-    req.session.screenName = data['screen_name'];
+    req.session.screenName = data.screen_name;
     res.redirect(config.publicUrl);
   };
 
